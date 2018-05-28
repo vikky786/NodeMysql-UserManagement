@@ -3,7 +3,7 @@ var BCRYPT = require('bcrypt');
 var secretKeys = require('../config.js');
 var secret = secretKeys.secret;
 var saltRounds = 10;
-var selectColforUserList = "id, email, name, address";
+var selectColforUserList = "id, email, name, address, contact, user_image";
 
 var createUser = (req, res) => {
     BCRYPT.hash(req.body.password, saltRounds, function(err, hash) {
@@ -15,6 +15,15 @@ var createUser = (req, res) => {
             res.status(200).send({status:200, error:'', data:result, message:'SUCCESS' });
         });
     });
+}
+
+var updateUser = (req, res) => {       
+        DB.query('UPDATE users SET ? WHERE id = ?', req.body, function (err, result) {
+            if (err)
+            res.status(500).send({ status:500, error:err, data:'', message:'SERVER_ERROR' });
+            else
+            res.status(200).send({ status:200, error:'', data:result, message:'SUCCESS' });
+        });
 }
 
 var getUsers = (req, res) => {

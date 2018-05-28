@@ -7,8 +7,21 @@ const moment = require('moment');
 const async = require('async');
 var morgan  = require('morgan');
 var jwt    = require('jsonwebtoken'); // used to create, sign, and verify tokens
+var multer = require('multer');
 var connectToDB = require('./mySqlDb/db.js');
-var usermodal = require('./users_modal/users_modal.js');
+var usermodel = require('./users_model/users_model.js');
+app.use(express.static(__dirname + '/uploads/'));
+
+var storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, 'uploads/')
+    },
+    filename: (req, file, cb) => {
+      cb(null, Date.parse(new Date)+file.originalname)
+    }
+});
+
+var upload = multer({storage: storage});
 
 app.use(bodyParser.json());                                     
 app.use(bodyParser.urlencoded({extended: true}));
@@ -32,12 +45,12 @@ router.post('/authenticate', function(req, res) {
             res.status(500).send({ status:500, error:err, data:'', message:'SERVER_ERROR' });
 
             if(result.length != 0){
-                usermodal.BCRYPT.compare(req.body.password, result[0].password, function(err, resstatus) {
+                usermodel.BCRYPT.compare(req.body.password, result[0].password, function(err, resstatus) {
                     if(resstatus) {
                     var payload = {
                             user:req.body.email
                         }
-                    var token = jwt.sign(payload, usermodal.secret, {
+                    var token = jwt.sign(payload, usermodel.secret, {
                         expiresIn: 60*60*24 // expires in 24 hours
                     });
                     res.status(200).send({ status:200, error:'', data:{'token':token, 'user':result}, message:'SUCCESS' });
@@ -52,8 +65,9 @@ router.post('/authenticate', function(req, res) {
 });
 // route to authenticate a user end here    
 
-router.post('/createUser', function(req, res){    
-    usermodal.createUser(req, res)
+router.post('/createUser', upload.single('user_image'), function(req, res){
+    req.body.user_image = req.file.filename; 
+    usermodel.createUser(req, res)
 });
 
 router.use(function(req, res, next) {
@@ -63,7 +77,7 @@ router.use(function(req, res, next) {
   // decode token
   if (token) {
     // verifies secret and checks exp
-    jwt.verify(token, usermodal.secret, function(err, decoded) {      
+    jwt.verify(token, usermodel.secret, function(err, decoded) {      
       if (err) {
         return res.status(403).send({ status:403, error:'AUTHENTICATION_FAILED', data:[], message:'AUTHENTICATION_FAILED' });    
       } else {
@@ -81,15 +95,15 @@ router.use(function(req, res, next) {
 
 
 router.get('/getUsers', function (req, res) {
-    usermodal.getUsers(req, res);
+    usermodel.getUsers(req, res);
 });
 
 router.get('/getUser/:id', function(req, res){
-   usermodal.getUser(req, res);
+   usermodel.getUser(req, res);
 });
 
 router.delete('/deleteUser/:id', function(req, res){
-   usermodal.deleteUser(req, res);
+   usermodel.deleteUser(req, res);
 });
 
 router.get('/checkWaterFall/:me/:friend', function(req, res) {
@@ -115,15 +129,7 @@ router.get('/checkWaterFall/:me/:friend', function(req, res) {
     );
 });
 
-
-
-
-
-
-
-
 app.use('/api', router);
-
 app.listen(port);
 console.log('Server is up on ' + port);
 
